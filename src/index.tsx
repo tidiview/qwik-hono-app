@@ -20,4 +20,6 @@ app.all('*', async (c) => {
   return handler(c.req.raw, platform)
 })
 
+console.log("🚀 Worker déployé avec SSR actif");
+
 export default app

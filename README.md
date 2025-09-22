@@ -1,21 +1,14 @@
-```txt
-npm install
-npm run dev
-```
+# Qwik + Hono + Cloudflare Workers
 
-```txt
-npm run deploy
-```
+Ce projet combine **QwikCity** (frontend) et **Hono** (backend/reverse proxy) déployés sur **Cloudflare Workers**.
 
-[For generating/synchronizing types based on your Worker configuration run](https://developers.cloudflare.com/workers/wrangler/commands/#types):
+## 🚀 Développement local
 
-```txt
-npm run cf-typegen
-```
+Dans deux terminaux séparés :
 
-Pass the `CloudflareBindings` as generics when instantiation `Hono`:
+```bash
+# Terminal 1 : Qwik (frontend)
+npm run dev:frontend
 
-```ts
-// src/index.ts
-const app = new Hono<{ Bindings: CloudflareBindings }>()
-```
+# Terminal 2 : Worker Hono (Cloudflare)
+npm run dev:worker
