@@ -14,7 +14,7 @@ export default defineConfig(({ command, mode }): UserConfig => {
         "Cache-Control": "public, max-age=0",
       },
       watch: {
-        ignored: ["**/dist/**", "**/server/**"], // 👈 éviter les rebuilds en boucle
+        ignored: ["**/dist/**", "**/server/**", "**/hono/**"], // 👈 éviter les rebuilds en boucle
       },
     },
     preview: {
