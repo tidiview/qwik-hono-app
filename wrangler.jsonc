@@ -1,15 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "qwik-hono-app",
-  "main": "./src/index.ts",
+  "main": "./src/index.tsx",
   "compatibility_date": "2025-08-03",
 
   // 👇 pour que Wrangler serve aussi le frontend Qwik
   "assets": {
     "directory": "./frontend/dist"
-  },
-
-  "build": {
-    "command": "npm run build:frontend"
   }
 }

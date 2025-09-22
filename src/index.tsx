@@ -1,31 +1,23 @@
 import { Hono } from 'hono'
 import { requestHandler } from '@builder.io/qwik-city/middleware/request-handler'
 
-// @ts-ignore
-import render from '../../frontend/server/entry.ssr.js'
-// @ts-ignore
-import qwikCityPlan from '../../frontend/server/qwikcity-plan.js'
+const app = new Hono()
 
-type Env = {
-  Bindings: { /* tes bindings Workers (KV, D1, etc.) */ }
-}
-
-const app = new Hono<{ Bindings: Env }>()
-
-app.all('*', (c) => {
+app.all('*', async (c) => {
   const platform = {
     env: c.env,
     cf: (c.req.raw as any).cf,
     ctx: c.executionCtx,
   }
 
-  const createHandler = requestHandler as unknown as (
-    args: { render: any; qwikCityPlan: any }
-  ) => (req: Request, platform?: any, opts?: any) => Promise<Response>
+  const renderMod = await import('../frontend/server/entry.ssr.js')
+  const planMod = await import('../frontend/server/@qwik-city-plan.js')
 
-  const handler = createHandler({ render, qwikCityPlan })
+  const render = renderMod?.default ?? renderMod
+  const qwikCityPlan = planMod?.default ?? planMod
+
+  const handler = (requestHandler as any)({ render, qwikCityPlan })
   return handler(c.req.raw, platform)
-
 })
 
 export default app
