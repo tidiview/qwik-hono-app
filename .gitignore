@@ -1,6 +1,8 @@
 # prod
 dist/
 dist-server/
+hono/.qwik-server/
+frontend/dist/
 
 # dev
 .yarn/
