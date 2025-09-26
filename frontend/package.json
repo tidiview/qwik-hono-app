@@ -1,0 +1,21 @@
+{
+  "name": "qwik-frontend",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite --mode ssr",
+    "build": "qwik build",
+    "build.client": "vite build",
+    "build.ssr": "qwik build ssr",
+    "build.preview": "vite build --ssr src/entry.preview.tsx",
+    "preview": "qwik build preview && vite preview"
+  },
+  "devDependencies": {
+    "@builder.io/qwik": "^1.16.1",
+    "@builder.io/qwik-city": "^1.16.1",
+    "ignore": "^7.0.5",
+    "typescript": "^5.4.5",
+    "vite": "^6.0.0",
+    "vite-tsconfig-paths": "^5.0.0"
+  }
+}

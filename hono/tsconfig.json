@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "lib": ["ES2022", "DOM"],
+    "types": ["@cloudflare/workers-types", "node", "@builder.io/qwik-city"],
+
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+
+    "jsx": "react-jsx",
+    "jsxImportSource": "@builder.io/qwik",
+
+    "baseUrl": ".",
+    "paths": {
+      "@qwik-client-manifest": ["./.qwik-server/aliases/qwik-client-manifest.js"],
+      "@qwik-city-static-paths": ["./.qwik-server/aliases/qwik-city-static-paths.js"],
+      "@qwik-city-not-found-paths": ["./.qwik-server/aliases/qwik-city-not-found-paths.js"],
+    }
+  },
+  "include": ["src"]
+}

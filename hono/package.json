@@ -1,0 +1,33 @@
+{
+  "name": "qwik-hono-worker",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "predev": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
+    "dev": "npm run build:frontend && node ./scripts/sync-ssr.mjs && wrangler dev",
+    "prebuild": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
+    "build": "npm run build:frontend && node .qwik-server/patch-plan.js",
+    "predeploy": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
+    "deploy": "npx wrangler deploy",
+    "build:frontend": "cd ../frontend && npm run build",
+    "patch-plan": "node .qwik-server/patch-plan.js",
+    "fmt": "prettier --write .",
+    "fmt.check": "prettier --check .",
+    "lint": "eslint \"src/**/*.ts*\"",
+    "cf-typegen": "wrangler types --env-interface CloudflareBindings",
+    "postinstall": "node ./scripts/create-proxies.mjs"
+  },
+  "dependencies": {
+    "@builder.io/qwik": "^1.16.1",
+    "@builder.io/qwik-city": "^1.16.1",
+    "hono": "^4.9.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250923.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.7",
+    "wrangler": "^4.40.2"
+  }
+}
