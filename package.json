@@ -1,0 +1,14 @@
+{
+  "name": "qwik-hono-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:frontend": "npm --prefix frontend run build",
+    "build:frontend:ssr": "npm --prefix frontend run build.ssr:workers",
+    "build:all": "npm run build:frontend && npm run build:frontend:ssr && npm --prefix hono run prepare:ssr && npm --prefix hono run sync:ssr && npm --prefix hono run sync:assets",
+    "check:build": "node ./check-build.mjs",
+    "dev": "npm run check:build && npm --prefix hono run dev",
+    "deploy": "npm run build:all && npm --prefix hono run deploy",
+    "clean": "npm --prefix hono run clean"
+  }
+}
