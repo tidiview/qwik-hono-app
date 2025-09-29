@@ -3,14 +3,20 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "predev": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
-    "dev": "npm run build:frontend && node ./scripts/sync-ssr.mjs && wrangler dev",
-    "prebuild": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
-    "build": "npm run build:frontend && node .qwik-server/patch-plan.js",
-    "predeploy": "npm run build:frontend && node ./scripts/sync-ssr.mjs",
-    "deploy": "npx wrangler deploy",
-    "build:frontend": "cd ../frontend && npm run build",
-    "patch-plan": "node .qwik-server/patch-plan.js",
+    "prepare:ssr": "node ./scripts/create-proxies.mjs",
+    "sync:ssr": "node ./scripts/sync-ssr.mjs",
+    "sync-ssr": "npm run sync:ssr",
+    "sync:assets": "node ./scripts/sync-assets.mjs",
+    "clean": "node ./scripts/clean-all.mjs",
+
+    "build:frontend": "npm --prefix ../frontend run build",
+    "build:frontend:ssr": "npm --prefix ../frontend run build.ssr:workers",
+    "build:all": "npm run build:frontend && npm run build:frontend:ssr && npm run prepare:ssr && npm run sync:ssr && npm run sync:assets",
+
+    "predev": "npm run build:all",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+
     "fmt": "prettier --write .",
     "fmt.check": "prettier --check .",
     "lint": "eslint \"src/**/*.ts*\"",
@@ -24,8 +30,10 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250923.0",
+    "copyfiles": "^2.4.1",
     "eslint": "^9.0.0",
     "prettier": "^3.0.0",
+    "rimraf": "^6.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
     "wrangler": "^4.40.2"

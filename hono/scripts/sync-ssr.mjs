@@ -1,117 +1,112 @@
-// scripts/sync-ssr.mjs
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+// /hono/scripts/sync-ssr.mjs  — ESM, copie TOUT .qwik/server
+import * as fssync from "node:fs";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Racine du projet hono
-const honoDir = path.resolve(__dirname, '..');
+const honoDir = path.resolve(__dirname, "..");
+const repoRoot = path.resolve(honoDir, "..");
 
-// Candidats d’emplacement pour les artefacts SSR
 const serverCandidates = [
-  path.resolve(honoDir, '../frontend/.qwik/server'),
-  path.resolve(honoDir, '../frontend/server'),
-  path.resolve(honoDir, '.qwik/server')
+  path.resolve(honoDir, "../frontend/.qwik/server"),
+  path.resolve(honoDir, "../frontend/server"),
+  path.resolve(honoDir, ".qwik/server"),
 ];
 
-// Dossier attendu pour la copie
-const destDir = path.resolve(honoDir, '.qwik-server');
-
-// Liste des fichiers à synchroniser
-const files = [
-  { name: 'entry.ssr.js', variants: ['entry.ssr.js'], from: 'server' },
-  { name: '@qwik-city-plan.js', variants: ['@qwik-city-plan.js', '@qwik-city-plan.mjs'], from: 'server' },
-  { name: 'q-manifest.json', variants: ['q-manifest.json'], from: 'dist' }
+const distCandidates = [
+  path.resolve(honoDir, "../frontend/dist"),
+  path.resolve(honoDir, "dist"),
 ];
+
+const destDir = path.resolve(honoDir, ".qwik-server");
 
 async function exists(p) {
-  try {
-    await fs.stat(p);
-    return true;
-  } catch {
-    return false;
-  }
+  try { await fs.stat(p); return true; } catch { return false; }
 }
 
-async function pickSourceDir(type) {
-  if (type === 'server') {
-    for (const dir of serverCandidates) {
-      if (await exists(dir)) return dir;
-    }
-  }
-  if (type === 'dist') {
-    const dir = path.resolve(honoDir, '../frontend/dist');
-    if (await exists(dir)) return dir;
-  }
+async function pickDir(candidates) {
+  for (const d of candidates) if (await exists(d)) return d;
   return null;
 }
 
+async function ensureDir(p) {
+  await fs.mkdir(p, { recursive: true });
+}
+
+async function rmrf(p) {
+  try { await fs.rm(p, { recursive: true, force: true }); } catch {}
+}
+
+// Recopie récursive (Node >=16.7 : fs.cp dispo)
+async function cpRecursive(src, dest, filter) {
+  await ensureDir(path.dirname(dest));
+  return new Promise((resolve, reject) => {
+    fssync.cp(src, dest, { recursive: true, force: true, filter }, (err) => {
+      if (err) reject(err); else resolve();
+    });
+  });
+}
+
 async function main() {
-  await fs.mkdir(destDir, { recursive: true });
-
-  for (const f of files) {
-    const srcDir = await pickSourceDir(f.from);
-    if (!srcDir) {
-      console.error(`❌ Aucun dossier source trouvé pour ${f.name}`);
-      process.exit(1);
-    }
-
-    let found = null;
-    for (const v of f.variants) {
-      const p = path.join(srcDir, v);
-      if (await exists(p)) {
-        found = p;
-        break;
-      }
-    }
-
-    if (!found) {
-      console.error(`❌ Fichier manquant dans ${srcDir} : ${f.variants.join(' ou ')}`);
-      process.exit(1);
-    }
-
-    const target = path.join(destDir, f.name);
-    await fs.copyFile(found, target);
-    console.log(`✅ Copié ${path.relative(honoDir, found)} → ${path.relative(honoDir, target)}`);
+  console.log("🔎 Recherche des artefacts SSR…");
+  const serverDir = await pickDir(serverCandidates);
+  if (!serverDir) {
+    console.error("❌ Aucun dossier source 'server' trouvé :", serverCandidates.map(p => path.relative(repoRoot, p)).join(", "));
+    process.exit(1);
+  }
+  const distDir = await pickDir(distCandidates);
+  if (!distDir) {
+    console.error("❌ Aucun dossier source 'dist' trouvé");
+    process.exit(1);
   }
 
-  // Création des alias
-  const aliasDir = path.join(destDir, 'aliases');
-  await fs.mkdir(aliasDir, { recursive: true });
+  console.log("📁 server :", path.relative(repoRoot, serverDir));
+  console.log("📁 dist   :", path.relative(repoRoot, distDir));
 
-  // @qwik-client-manifest
+  // On repart propre
+  await rmrf(destDir);
+  await ensureDir(destDir);
+
+  // 1) Copier TOUT le contenu de .qwik/server (incl. q-*.js, maps, etc.)
+  await cpRecursive(serverDir, destDir);
+
+  // 2) Copier q-manifest.json à la racine de .qwik-server
+  const qManifestSrc = path.join(distDir, "q-manifest.json");
+  if (!(await exists(qManifestSrc))) {
+    console.error("❌ q-manifest.json introuvable dans", path.relative(repoRoot, distDir));
+    process.exit(1);
+  }
+  await fs.copyFile(qManifestSrc, path.join(destDir, "q-manifest.json"));
+  console.log("✅ Copié q-manifest.json");
+
+  // 3) Aliases (proxies simples)
+  const aliasDir = path.join(destDir, "aliases");
+  await ensureDir(aliasDir);
+
   await fs.writeFile(
-    path.join(aliasDir, 'qwik-client-manifest.js'),
+    path.join(aliasDir, "qwik-client-manifest.js"),
     `// Alias pour @qwik-client-manifest
 import manifest from '../q-manifest.json';
 export default manifest;
 export { manifest };
 `
   );
-
-  // @qwik-city-static-paths
   await fs.writeFile(
-    path.join(aliasDir, 'qwik-city-static-paths.js'),
-    `// Alias pour @qwik-city-static-paths
-export function isStaticPath() { return false; }
-`
+    path.join(aliasDir, "qwik-city-static-paths.js"),
+    `export function isStaticPath(){return false}\n`
+  );
+  await fs.writeFile(
+    path.join(aliasDir, "qwik-city-not-found-paths.js"),
+    `export function getNotFound(){return null}\n`
   );
 
-  // @qwik-city-not-found-paths
-  await fs.writeFile(
-    path.join(aliasDir, 'qwik-city-not-found-paths.js'),
-    `// Alias pour @qwik-city-not-found-paths
-export function getNotFound() { return null; }
-`
-  );
-
-  console.log('✨ Sync SSR terminé. Destination :', path.relative(honoDir, destDir));
-  console.log('✨ Alias générés : qwik-client-manifest, qwik-city-static-paths, qwik-city-not-found-paths');
+  console.log("✨ Sync SSR terminé →", path.relative(repoRoot, destDir));
 }
 
-main().catch((e) => {
-  console.error('❌ sync-ssr.mjs a échoué :', e?.message ?? e);
+main().catch(e => {
+  console.error("❌ sync-ssr.mjs a échoué:", e?.stack ?? e);
   process.exit(1);
 });

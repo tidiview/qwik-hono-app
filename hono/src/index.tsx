@@ -1,15 +1,20 @@
 // /hono/src/index.tsx
 import { Hono } from 'hono'
-import qwikCityPlan from '../.qwik-server/@qwik-city-plan.patched.js'
+// @ts-ignore
+import qwikCityPlan from '../.qwik-server/@qwik-city-plan.js'
+// @ts-ignore
 import render from '../.qwik-server/entry.ssr.js'
 import {
   requestHandler as qwikRequestHandler,
   type ServerRequestEvent,
 } from '@builder.io/qwik-city/middleware/request-handler'
+import { serveStatic } from 'hono/cloudflare-workers'
 
-// === Bindings Cloudflare ===
+// Déclarations pour Wrangler
+declare const __STATIC_CONTENT_MANIFEST: string
+
 type Bindings = {
-  __STATIC_CONTENT?: Fetcher | KVNamespace
+  __STATIC_CONTENT: Fetcher
   __STATIC_CONTENT_MANIFEST?: string
 } & Record<string, unknown>
 
@@ -31,85 +36,59 @@ const extToMime = (pathname: string): string | undefined => {
   return undefined
 }
 
+// ===== Assets statiques (mode Fetcher uniquement) =====
 const serveFromSites = async (c: any): Promise<Response> => {
-  const storage = c.env.__STATIC_CONTENT as Fetcher | KVNamespace | undefined
-  const manifestJson = c.env.__STATIC_CONTENT_MANIFEST as string | undefined
-  const url = new URL(c.req.url)
-  const pathname = url.pathname
+  const storage = c.env.__STATIC_CONTENT
+  const res = await storage.fetch(c.req.raw)
+  if (res.status === 404) return res
 
-  if (!storage) return new Response('Not Found', { status: 404 })
-
-  // Mode R2 Asset fetcher (Wrangler récent)
-  if (typeof (storage as Fetcher).fetch === 'function') {
-    const res = await (storage as Fetcher).fetch(c.req.raw)
-    if (res.status === 404) return res
-    if (!res.headers.get('content-type')) {
-      const mime = extToMime(pathname)
-      if (mime) {
-        const h = new Headers(res.headers)
-        h.set('content-type', mime)
-        return new Response(await res.arrayBuffer(), { status: res.status, headers: h })
-      }
+  // Ajout du bon Content-Type si manquant
+  if (!res.headers.get('content-type')) {
+    const mime = extToMime(new URL(c.req.url).pathname)
+    if (mime) {
+      const h = new Headers(res.headers)
+      h.set('content-type', mime)
+      return new Response(await res.arrayBuffer(), { status: res.status, headers: h })
     }
-    return res
   }
-
-  // Mode KV (ancien)
-  if (!manifestJson) return new Response('Not Found', { status: 404 })
-  const manifest = JSON.parse(manifestJson) as Record<string, string>
-  const key = manifest[pathname.replace(/^\//, '')] ?? pathname.replace(/^\//, '')
-  const value = await (storage as KVNamespace).get(key, 'arrayBuffer')
-  if (!value) return new Response('Not Found', { status: 404 })
-  const headers = new Headers()
-  const mime = extToMime(pathname)
-  if (mime) headers.set('content-type', mime)
-  return new Response(value, { status: 200, headers })
+  return res
 }
 
-// ===== 1) Blocage explicite des WebSockets =====
-// Si un client tente Upgrade: websocket, on refuse (pas de mode WS).
-app.use('*', async (c, next) => {
-  const upgrade = c.req.header('Upgrade')
-  if (upgrade && upgrade.toLowerCase() === 'websocket') {
-    // 426 = Upgrade Required (ou 400/404 si vous préférez masquer)
-    return c.text('WebSocket désactivé sur ce worker.', 426)
-  }
-  // Certains proxies envoient "Connection: upgrade" sans Upgrade explicite : on neutralise.
-  const connection = c.req.header('Connection')
-  if (connection && /upgrade/i.test(connection)) {
-    return c.text('Upgrade désactivé sur ce worker.', 426)
-  }
-  await next()
+// Servez les assets du répertoire public
+app.get('/assets/*', async (c) => {
+  const pathname = new URL(c.req.url).pathname
+  const res = await c.env.__STATIC_CONTENT.fetch(`http://fakehost${pathname}`)
+  return res
 })
 
-// ===== 2) Fichiers statiques AVANT SSR =====
-app.get('/build/*', serveFromSites)
-app.get('/assets/*', serveFromSites)
-app.get('/favicon.*', serveFromSites)
-app.get('/robots.txt', serveFromSites)
-app.get('/manifest.webmanifest', serveFromSites)
+app.get('/build/*', async (c) => {
+  const pathname = new URL(c.req.url).pathname
+  const res = await c.env.__STATIC_CONTENT.fetch(`http://fakehost${pathname}`)
+  return res
+})
 
-// ===== 3) Fallback SSR Qwik (mode classique, streaming Response, PAS WebSocket) =====
+// ===== Middleware pour désactiver le cache du HTML (dev) =====
+app.use('*', async (c, next) => {
+  await next()
+  if (c.res && c.res.headers.get('content-type')?.includes('text/html')) {
+    c.res.headers.set('Cache-Control', 'no-store')
+  }
+})
+
+// ===== SSR Qwik =====
 app.all('*', async (c): Promise<Response> => {
   const url = new URL(c.req.url)
 
-  const plan = {
-    ...qwikCityPlan,
-    basePathname: (qwikCityPlan as any).basePathname ?? '/',
-    trailingSlash: (qwikCityPlan as any).trailingSlash ?? false,
-  }
-
-  // Streaming HTTP (classique) — aucune prise en charge WebSocket ici.
   const { readable, writable } = new TransformStream<Uint8Array>()
   const headers = new Headers()
   let status = 200
 
   const serverRequestEv: ServerRequestEvent = {
-    mode: 'server', // <-- clé : on force le mode serveur classique
+    mode: 'server',
     url,
     request: c.req.raw,
-    locale: undefined,
     platform: c.env as unknown as Record<string, unknown>,
+    locale: undefined,
     env: {
       get(key: string): string | undefined {
         const v = (c.env as Record<string, unknown>)[key]
@@ -126,26 +105,21 @@ app.all('*', async (c): Promise<Response> => {
     }),
   }
 
-  // Pas de sérialiseur particulier requis pour WS/HMR
-  const qwikSerializer = {} as unknown as Parameters<typeof qwikRequestHandler>[2]
-
   const run = await qwikRequestHandler(
     serverRequestEv,
     {
       render,
-      qwikCityPlan: plan,
+      qwikCityPlan,
       manifest: (globalThis as any).MANIFEST ?? {},
     },
-    qwikSerializer
+    {} as any
   )
 
-  // Qwik peut renvoyer directement une Response (redir, static…)
   if (run instanceof Response) {
     try { (writable as any).close?.() } catch {}
     return run
   }
 
-  // Sinon, applique status/headers éventuels fournis par Qwik
   if (run && typeof run === 'object') {
     if ('status' in run && typeof (run as any).status === 'number') {
       status = (run as any).status

@@ -5,6 +5,7 @@
   "compatibility_date": "2025-09-26",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "directory": "../frontend/dist"
+    "binding": "__STATIC_CONTENT",
+    "directory": "./public"
   }
 }
