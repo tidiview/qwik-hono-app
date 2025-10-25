@@ -1,8 +1,13 @@
 # prod
 dist/
 dist-server/
-hono/.qwik-server/
-frontend/dist/
+hono/.qwik-server/*
+hono/public/*
+hono/package-lock.json
+frontend/dist/*
+frontend/.qwik-dev/*
+frontend/.qwik/server/*
+frontend/package-lock.json
 
 # dev
 .yarn/

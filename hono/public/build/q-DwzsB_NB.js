@@ -1,1 +1,0 @@
-import{_ as t}from"./q-DoNi8vyY.js";import{c as e,q as o}from"./q-58BKY9oY.js";const c=e(o(()=>t(()=>import("./q-Du5MqLpn.js"),[]),"s_l3BYZmZKvrE")),i={title:"Success",meta:[{name:"description",content:"Form success description"}]};export{c as default,i as head};

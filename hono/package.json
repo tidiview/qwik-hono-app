@@ -24,8 +24,8 @@
     "postinstall": "node ./scripts/create-proxies.mjs"
   },
   "dependencies": {
-    "@builder.io/qwik": "^1.16.1",
-    "@builder.io/qwik-city": "^1.16.1",
+    "@builder.io/qwik": "^1.17.0",
+    "@builder.io/qwik-city": "^1.17.0",
     "hono": "^4.9.8"
   },
   "devDependencies": {
