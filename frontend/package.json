@@ -14,8 +14,8 @@
     "build.all": "npm run build && npm run build.ssr"
   },
   "devDependencies": {
-    "@builder.io/qwik": "^1.16.1",
-    "@builder.io/qwik-city": "^1.16.1",
+    "@builder.io/qwik": "^1.17.1",
+    "@builder.io/qwik-city": "^1.17.1",
     "ignore": "^7.0.5",
     "typescript": "^5.4.5",
     "vite": "^5.4.0",

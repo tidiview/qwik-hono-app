@@ -5,6 +5,7 @@ hono/.qwik-server/
 hono/public/
 frontend/dist/
 frontend/public/
+frontend/.qwik/server/
 
 # dev
 .yarn/
@@ -37,3 +38,6 @@ lerna-debug.log*
 # misc
 .DS_Store
 hono/hono/
+frontend/.qwik/server/@qwik-city-not-found-paths.js
+frontend/.qwik/server/@qwik-city-not-found-paths.js
+frontend/.qwik/server/@qwik-city-not-found-paths.js

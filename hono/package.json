@@ -5,18 +5,14 @@
   "scripts": {
     "prepare:ssr": "node ./scripts/create-proxies.mjs",
     "sync:ssr": "node ./scripts/sync-ssr.mjs",
-    "sync-ssr": "npm run sync:ssr",
     "sync:assets": "node ./scripts/sync-assets.mjs",
     "clean": "node ./scripts/clean-all.mjs",
-
     "build:frontend": "npm --prefix ../frontend run build",
     "build:frontend:ssr": "npm --prefix ../frontend run build.ssr:workers",
     "build:all": "npm run build:frontend && npm run build:frontend:ssr && npm run prepare:ssr && npm run sync:ssr && npm run sync:assets",
-
     "predev": "npm run build:all",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-
     "fmt": "prettier --write .",
     "fmt.check": "prettier --check .",
     "lint": "eslint \"src/**/*.ts*\"",
@@ -24,8 +20,8 @@
     "postinstall": "node ./scripts/create-proxies.mjs"
   },
   "dependencies": {
-    "@builder.io/qwik": "^1.16.1",
-    "@builder.io/qwik-city": "^1.16.1",
+    "@builder.io/qwik": "^1.17.1",
+    "@builder.io/qwik-city": "^1.17.1",
     "hono": "^4.9.8"
   },
   "devDependencies": {
@@ -36,6 +32,6 @@
     "rimraf": "^6.0.1",
     "typescript": "^5.9.2",
     "vite": "^7.1.7",
-    "wrangler": "^4.40.2"
+    "wrangler": "^4.45.0"
   }
 }

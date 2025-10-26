@@ -8,7 +8,7 @@ import {
   requestHandler as qwikRequestHandler,
   type ServerRequestEvent,
 } from '@builder.io/qwik-city/middleware/request-handler'
-import { serveStatic } from 'hono/cloudflare-workers'
+
 
 // Déclarations pour Wrangler
 declare const __STATIC_CONTENT_MANIFEST: string
@@ -36,24 +36,6 @@ const extToMime = (pathname: string): string | undefined => {
   return undefined
 }
 
-// ===== Assets statiques (mode Fetcher uniquement) =====
-const serveFromSites = async (c: any): Promise<Response> => {
-  const storage = c.env.__STATIC_CONTENT
-  const res = await storage.fetch(c.req.raw)
-  if (res.status === 404) return res
-
-  // Ajout du bon Content-Type si manquant
-  if (!res.headers.get('content-type')) {
-    const mime = extToMime(new URL(c.req.url).pathname)
-    if (mime) {
-      const h = new Headers(res.headers)
-      h.set('content-type', mime)
-      return new Response(await res.arrayBuffer(), { status: res.status, headers: h })
-    }
-  }
-  return res
-}
-
 // Servez les assets du répertoire public
 app.get('/assets/*', async (c) => {
   const pathname = new URL(c.req.url).pathname
@@ -69,11 +51,19 @@ app.get('/build/*', async (c) => {
 
 // ===== Middleware pour désactiver le cache du HTML (dev) =====
 app.use('*', async (c, next) => {
-  await next()
-  if (c.res && c.res.headers.get('content-type')?.includes('text/html')) {
-    c.res.headers.set('Cache-Control', 'no-store')
+  const url = new URL(c.req.url);
+  const p = url.pathname;
+
+  // ignore les assets
+  if (p.startsWith('/assets/') || p.startsWith('/build/')) return next();
+
+  // si pas d'extension et pas déjà un slash final -> redirige
+  if (!p.endsWith('/') && !/\.[a-z0-9]+$/i.test(p)) {
+    url.pathname = p + '/';
+    return c.redirect(url.toString(), 308);
   }
-})
+  return next();
+});
 
 // ===== SSR Qwik =====
 app.all('*', async (c): Promise<Response> => {
